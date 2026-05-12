@@ -73,8 +73,8 @@ const productos = [
     variantes: ['Talla única'],
     colores: ['#FFFFFF'],
     emoji: '🎧',
-    imagen: '',
-    imagenes: [],
+    imagen: 'img/airpods pro 2.jpg',
+    imagenes: ["img/airpods pro 2.jpg", "img/airpods pro 2.2.jpg", "img/airpods pro 2.3.jpg"],
     badge: 'Nuevo',
   },
   {
@@ -208,31 +208,88 @@ function renderCarrusel(imgs, name) {
 
   carruselImgs = imgs;
   carruselIdx  = 0;
-  updateCarrusel(name);
+  buildCarrusel(name);
 }
 
-function updateCarrusel(name) {
+function buildCarrusel(name) {
   const wrap = document.getElementById('modalImgWrap');
 
-  const dots = carruselImgs
-    .map((_, i) => `<span class="cdot ${i === carruselIdx ? 'active' : ''}"></span>`)
-    .join('');
+  // Construir el track con todas las imágenes una al lado de la otra
+  const slides = carruselImgs.map((src, i) =>
+    `<div class="c-slide" style="min-width:100%;height:100%;">
+       <img src="${src}" alt="${name} ${i+1}" style="width:100%;height:100%;object-fit:cover;display:block;">
+     </div>`
+  ).join('');
+
+  const dots = carruselImgs.length > 1
+    ? `<div class="carrusel-dots" id="carruselDots">
+         ${carruselImgs.map((_, i) => `<span class="cdot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+       </div>`
+    : '';
 
   const navs = carruselImgs.length > 1
     ? `<button class="carrusel-nav prev" onclick="moveCarrusel(-1)">‹</button>
-       <button class="carrusel-nav next" onclick="moveCarrusel(1)">›</button>
-       <div class="carrusel-dots">${dots}</div>`
+       <button class="carrusel-nav next" onclick="moveCarrusel(1)">›</button>`
     : '';
 
   wrap.innerHTML = `
-    <img src="${carruselImgs[carruselIdx]}" alt="${name}" style="width:100%;height:100%;object-fit:cover;">
+    <div id="cTrack" style="display:flex;width:100%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;">
+      ${slides}
+    </div>
     ${navs}
+    ${dots}
   `;
+
+  // Touch / swipe
+  const track = document.getElementById('cTrack');
+  let startX = 0, startY = 0, isDragging = false;
+
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isDragging = true;
+  }, { passive: true });
+
+  track.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // Si el movimiento es más horizontal que vertical, bloquear scroll
+    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+  }, { passive: false });
+
+  track.addEventListener('touchend', e => {
+    if (!isDragging) return;
+    isDragging = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 50) moveCarrusel(dx < 0 ? 1 : -1);
+  });
+
+  // Mouse drag (escritorio)
+  let mouseStartX = 0, mouseDown = false;
+  track.addEventListener('mousedown', e => { mouseStartX = e.clientX; mouseDown = true; });
+  track.addEventListener('mouseup',   e => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    const dx = e.clientX - mouseStartX;
+    if (Math.abs(dx) > 50) moveCarrusel(dx < 0 ? 1 : -1);
+  });
+  track.addEventListener('mouseleave', () => { mouseDown = false; });
+}
+
+function updateCarrusel() {
+  const track = document.getElementById('cTrack');
+  if (!track) return;
+  track.style.transform = `translateX(-${carruselIdx * 100}%)`;
+
+  // Actualizar dots
+  const dots = document.querySelectorAll('#carruselDots .cdot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === carruselIdx));
 }
 
 function moveCarrusel(dir) {
   carruselIdx = (carruselIdx + dir + carruselImgs.length) % carruselImgs.length;
-  updateCarrusel(currentProduct.nombre);
+  updateCarrusel();
 }
 
 /* ── ABRIR MODAL ─────────────────────────────────────────────

@@ -377,7 +377,9 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 4rem;
+  cursor: grab;
 }
+.modal-left:active { cursor: grabbing; }
 
 .modal-left img {
   width: 100%;
