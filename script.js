@@ -1,17 +1,6 @@
-/* ============================================================
-   MYPODS — script.js
-   ============================================================ */
 
-/* ── NÚMERO DE WHATSAPP ──────────────────────────────────────
-   Cambia este número por el tuyo (código de país sin el +)
-   Ejemplo Colombia: 573001234567
-   ─────────────────────────────────────────────────────────── */
-const WHATSAPP_NUMBER = '573015086774';
+const WHATSAPP_NUMBER = '573209776284';
 
-/* ── MAPA DE COLORES ─────────────────────────────────────────
-   Agrega aquí los colores que uses en tus productos.
-   Clave: código hex  →  Valor: nombre legible
-   ─────────────────────────────────────────────────────────── */
 const nombreColores = {
   '#FFFFFF': 'Blanco',
   '#000000': 'Negro',
@@ -24,22 +13,6 @@ const nombreColores = {
   '#87CEEB': 'Azul cielo',
 };
 
-/* ── PRODUCTOS ───────────────────────────────────────────────
-   Cada objeto es un producto. Campos:
-   - nombre    : nombre del producto
-   - categoria : 'cargadores' | 'cables' | 'audifonos' | 'accesorios'
-                 (o cualquier categoría nueva que añadas)
-   - precio    : string con el precio, ej. "$35.000"
-   - descripcion: texto de descripción
-   - variantes : array de strings con las variantes (tallas, versiones…)
-   - colores   : array de códigos hex disponibles
-   - emoji     : emoji que aparece cuando no hay imagen
-   - imagen    : ruta a la imagen principal, ej. "img/cargador.jpg"
-                 (deja "" si no tienes imagen todavía)
-   - imagenes  : array con rutas de imágenes adicionales para el carrusel
-                 (deja [] si solo tienes una o ninguna imagen)
-   - badge     : "Nuevo" | "Agotado" | "" (sin badge)
-   ─────────────────────────────────────────────────────────── */
 const productos = [
   {
     nombre: 'Cargador 20W USB-C',
@@ -70,7 +43,7 @@ const productos = [
     categoria: 'audifonos',
     precio: '$320.000',
     descripcion: 'Cancelación activa de ruido, audio espacial personalizado y hasta 30 horas de batería.',
-    variantes: ['Talla única'],
+    variantes: ['Compatible'],
     colores: ['#FFFFFF'],
     emoji: '🎧',
     imagen: 'img/airpods pro 2.jpg',
@@ -202,9 +175,15 @@ function renderCarrusel(imgs, name) {
   const wrap = document.getElementById('modalImgWrap');
 
   if (!imgs || imgs.length === 0) {
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'center';
     wrap.innerHTML = `<span style="font-size:4rem">${currentProduct.emoji}</span>`;
+    wrap.ontouchstart = null; wrap.ontouchmove = null; wrap.ontouchend = null;
+    wrap.onmousedown = null; wrap.onmouseup = null; wrap.onmouseleave = null;
     return;
   }
+  wrap.style.display = 'block';
 
   carruselImgs = imgs;
   carruselIdx  = 0;
@@ -214,10 +193,9 @@ function renderCarrusel(imgs, name) {
 function buildCarrusel(name) {
   const wrap = document.getElementById('modalImgWrap');
 
-  // Construir el track con todas las imágenes una al lado de la otra
   const slides = carruselImgs.map((src, i) =>
-    `<div class="c-slide" style="min-width:100%;height:100%;">
-       <img src="${src}" alt="${name} ${i+1}" style="width:100%;height:100%;object-fit:cover;display:block;">
+    `<div class="c-slide" style="min-width:100%;height:100%;flex-shrink:0;">
+       <img src="${src}" alt="${name} ${i+1}" style="width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;">
      </div>`
   ).join('');
 
@@ -233,48 +211,62 @@ function buildCarrusel(name) {
     : '';
 
   wrap.innerHTML = `
-    <div id="cTrack" style="display:flex;width:100%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;">
+    <div id="cTrack" style="display:flex;width:100%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1);will-change:transform;touch-action:pan-y;">
       ${slides}
     </div>
     ${navs}
     ${dots}
   `;
 
-  // Touch / swipe
-  const track = document.getElementById('cTrack');
-  let startX = 0, startY = 0, isDragging = false;
+  // Eventos touch en el wrap (no el track) para no perderlos al reconstruir
+  wrap._touchStartX = 0;
+  wrap._touchStartY = 0;
+  wrap._swiping = false;
 
-  track.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    isDragging = true;
-  }, { passive: true });
+  wrap.ontouchstart = e => {
+    wrap._touchStartX = e.touches[0].clientX;
+    wrap._touchStartY = e.touches[0].clientY;
+    wrap._swiping = true;
+    // Quitar transición para que siga el dedo en tiempo real
+    document.getElementById('cTrack').style.transition = 'none';
+  };
 
-  track.addEventListener('touchmove', e => {
-    if (!isDragging) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    // Si el movimiento es más horizontal que vertical, bloquear scroll
-    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
-  }, { passive: false });
+  wrap.ontouchmove = e => {
+    if (!wrap._swiping) return;
+    const dx = e.touches[0].clientX - wrap._touchStartX;
+    const dy = e.touches[0].clientY - wrap._touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      e.preventDefault();
+      const base = -(carruselIdx * 100);
+      const pct  = (dx / wrap.offsetWidth) * 100;
+      document.getElementById('cTrack').style.transform = `translateX(calc(${base}% + ${dx}px))`;
+    }
+  };
 
-  track.addEventListener('touchend', e => {
-    if (!isDragging) return;
-    isDragging = false;
-    const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 50) moveCarrusel(dx < 0 ? 1 : -1);
-  });
+  wrap.ontouchend = e => {
+    if (!wrap._swiping) return;
+    wrap._swiping = false;
+    const track = document.getElementById('cTrack');
+    track.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1)';
+    const dx = e.changedTouches[0].clientX - wrap._touchStartX;
+    if (Math.abs(dx) > 50) {
+      moveCarrusel(dx < 0 ? 1 : -1);
+    } else {
+      // Volver a la posición original sin cambiar índice
+      track.style.transform = `translateX(-${carruselIdx * 100}%)`;
+    }
+  };
 
   // Mouse drag (escritorio)
   let mouseStartX = 0, mouseDown = false;
-  track.addEventListener('mousedown', e => { mouseStartX = e.clientX; mouseDown = true; });
-  track.addEventListener('mouseup',   e => {
+  wrap.onmousedown  = e => { mouseStartX = e.clientX; mouseDown = true; };
+  wrap.onmouseup    = e => {
     if (!mouseDown) return;
     mouseDown = false;
     const dx = e.clientX - mouseStartX;
     if (Math.abs(dx) > 50) moveCarrusel(dx < 0 ? 1 : -1);
-  });
-  track.addEventListener('mouseleave', () => { mouseDown = false; });
+  };
+  wrap.onmouseleave = () => { mouseDown = false; };
 }
 
 function updateCarrusel() {
