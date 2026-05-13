@@ -41,7 +41,7 @@ const productos = [
   {
     nombre: 'AirPods Pro (2da gen)',
     categoria: 'audifonos',
-    precio: '$320.000',
+    precio: '$50.000',
     descripcion: 'Cancelación activa de ruido, audio espacial personalizado y hasta 30 horas de batería.',
     variantes: ['Compatible'],
     colores: ['#FFFFFF'],
